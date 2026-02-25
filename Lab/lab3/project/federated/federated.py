@@ -1,17 +1,24 @@
+# Import TensorFlow library for neural network operations
 import tensorflow as tf
 
+# Import the random module for selecting random clients during each training round
 import random
 
+# Import configuration classes for dataset, federated learning, OOD detection, and plotting
 from config import ConfigDataset, ConfigFederated, ConfigOod, ConfigPlot
+# Import the custom Dataset class for handling training data
 from dataset.dataset import Dataset
+# Import the federated_math module for mathematical operations specific to federated learning
 from federated.math import federated_math
 
+# Import the Hdff class (Hyperdimensional Feature Fusion) for OOD detection
 from ood.hdff import Hdff
+# Import the custom Model class for neural network operations
 from model.model import Model
 
 class Federated():
     """
-        Federated learning environment. Three cycles per round, update local models from global model, train local models, regression on local models and update global. 
+        Federated learning environment. Three cycles per round: update local models from global model, train local models, regression on local models and update global.
     """
     def __init__(self, dataset : Dataset, model : Model, federated_config : ConfigFederated, ood_config : ConfigOod, dataset_config : ConfigDataset, plot_config : ConfigPlot) -> None:
         """
@@ -23,25 +30,37 @@ class Federated():
             dataset_config (ConfigDataset) : configuration for dataset. 
             plot_config (ConfigPlot): configuration for plotting.
         """
+        # Store the dataset object for accessing training data
         self.dataset = dataset
-        self.init_model = model            # This model can be 
+        # Store the initial model that will be used as the global model
+        # This model can be distributed to clients or trained locally
+        self.init_model = model            
+        # Store federated learning configuration (rounds, number of clients, etc.)
         self.federated_config = federated_config
+        # Store OOD detection configuration (OOD thresholds, protection mechanisms, etc.)
         self.ood_config = ood_config
+        # Store plot configuration (figure sizes, display options, etc.)
         self.plot_config = plot_config
     
     def run(self): 
         """
             Runs federated learning environment.
         """
+        # Initialize the round counter to zero (starting round for training)
         round = 0
         
         # If loading pretrained models, round must be updated with the pre-trained models round. 
-        
+
+        # Check if the current round is less than the total number of rounds configured
         if(round < int(self.federated_config.rounds)):  
+            # Call train_ function to start federated training, starting from current round
             round = self.train_(round)
-        else:                                            # Only test if round = round on specific clients in load. 
+        else:                                            
+            # Only test if round = round on specific clients in load. 
+            # Run testing phase (evaluation on test data)
             self.test_()
             
+        # Return None as the function completes execution
         return None
   
     def train_(self, start : int):
@@ -71,26 +90,29 @@ class Federated():
         return round
     
     def test_(self):
-        # TODO
+        # TODO: Implement testing phase
+        # This method should evaluate the trained models on test data
         return None
     
-    def global_(self, id : int, round : int):                                            # Update all local models with global model weights. 
+    def global_(self, id : int, round : int):                                            
+        # Update all local models with global model weights. 
         """
             Updates local models with global model weights. 
         Args:
             id (int): id for global model.
         """
-        # TODO
+        # TODO: Implement synchronization of global model weights to all local models
         return None
             
-    def local_(self, id : int, round : int):                                         # Train local models
+    def local_(self, id : int, round : int):                                         
+        # Train local models
         """
             Trains local models, with id. 
         Args:
             id (int): id for local model. 
             round (int): current round. 
         """
-        # TODO
+        # TODO: Implement local model training for a specific client
         return None
         
     def update_(self, selected_clients, round : int):
@@ -102,8 +124,8 @@ class Federated():
             selected_clients (list): list with id of clients (local models) that selected for training.
             round (int): current round. 
         """
-        # TODO
-        
+        # TODO: Implement aggregation of client updates and global model update
+        # Include OOD detection filtering if enabled
         return None
         
         
@@ -114,8 +136,8 @@ class Federated():
             id (int): Id of model.
             model (Model): Model (object).
         """
-        # TODO
-        
+        # TODO: Implement feature extraction from model for OOD detection using HDFF
+        # Should extract hyperdimensional features that represent the model
         return None
         
     def ood_detection(self, selected_clients):
@@ -124,14 +146,13 @@ class Federated():
         Args:
             selected_clients (int): clients that undergo training this round.
         """
-        # TODO
-        
+        # TODO: Implement OOD detection logic to identify anomalous models among selected clients
+        # Compare client models against global model using similarity metrics
         return None
             
     def result(self):
         """
             Plot performance of each model. 
         """
-        # TODO
-        
+        # TODO: Implement result visualization and plotting of model performance metrics
         return None

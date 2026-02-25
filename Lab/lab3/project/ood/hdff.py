@@ -1,24 +1,31 @@
+# Import TensorFlow library for deep learning operations
 import tensorflow as tf
+# Import Keras from TensorFlow for building neural network models
 from tensorflow import keras
+# Import Keras layers module for constructing neural network layers
 from tensorflow.keras import layers
 
+# Import partial from functools for creating partial functions with preset arguments
 from functools import partial
+# Import tqdm for creating progress bars during iterations
 from tqdm import tqdm
 
+# Import partial again (duplicate import, not necessary but kept as-is)
 from functools import partial
 
+# Import the Vsa class from the ood module (Vector Symbolic Architecture for OOD detection)
 from ood.VSA import Vsa
+# Import configuration classes for dataset and OOD detection settings
 from config import ConfigDataset, ConfigOod
 
-# ----------------------------------------------------------------------------
-# Implementation Checklist 
-# ----------------------------------------------------------------------------
-# - [ ] Dummy input shape matches (batch_size, *input_shape)
-# - [ ] self.features length equals number of model layers
-# - [ ] Projection matrices match each layer's channel count
-# - [ ] All projected features have shape (batch, hyper_size)
-# - [ ] Bundled vector has shape (batch, hyper_size)
-# - [ ] Similarity returns a scalar or vector consistently
+# Section marker: Implementation checklist for HDFF (Hyperdimensional Feature Fusion)
+# These comments outline the requirements that must be satisfied during implementation
+# - [ ] Dummy input shape matches (batch_size, *input_shape) - batch + all input dimensions
+# - [ ] self.features length equals number of model layers - one feature per layer
+# - [ ] Projection matrices match each layer's channel count - correct input dimensions
+# - [ ] All projected features have shape (batch, hyper_size) - consistent output dimensions
+# - [ ] Bundled vector has shape (batch, hyper_size) - final bundled representation
+# - [ ] Similarity returns a scalar or vector consistently - predictable output format
 
 class Hdff():
     # Conceptual role:
@@ -39,6 +46,7 @@ class Hdff():
     # - A fixed projection per layer creates a stable mapping so different models
     #   can be compared in the same hypervector space.
     def __init__(self, ood_config : ConfigOod, dataset_config : ConfigDataset):
+        # Theory:
         # - Store config objects for later use (e.g., hypervector size, debug flags).
         # - Initialize lists for projections, feature tensors, and results.
         # - Create a dummy input tensor with shape:
@@ -56,15 +64,26 @@ class Hdff():
             ood_config (ConfigHdff): Hyperdimensional configuration.
             dataset_config (ConfigDataset): Dataset configuration.
         """
+        # Create a Vsa instance using the debug flag from ood_config for VSA operations
         self.vsa = Vsa(debug=ood_config.hdc_debug)
+        # Store the dataset configuration for accessing batch size and input shape
         self.dataset_config = dataset_config
+        # Store the OOD configuration for accessing hypervector size and other settings
         self.ood_config = ood_config
-         
+          
+        # Initialize empty list to store projection matrices (one per layer)
         self.proj = []
+        # Initialize list to store feature tensors extracted from each model layer
+        # Start with a single dummy value that will be replaced with actual features
         self.features = [0]
+        # Initialize empty list to store similarity results during comparison
         self.results = []
         
+        # Construct the shape for dummy input: (batch_size, *input_shape)
+        # For example, if input_shape is (224, 224, 3) and batch_size is 32, result is (32, 224, 224, 3)
         input_shape = (self.dataset_config.batch_size,) + self.dataset_config.input_shape
+        # Create a dummy input tensor filled with ones; used to pass through model for shape inference
+        # This allows feature extraction without needing actual data
         self.dummy_input = tf.ones(input_shape)
          
     def feature_update(self, model : tf.keras.models.Sequential):
@@ -91,7 +110,7 @@ class Hdff():
         Args:
             model (tf.keras.models.Sequential): Model for extracting output feature vectors.
         """
-        # TODO
+        # TODO: Implementation needed
 
             
     def feature_extraction(self, model : tf.keras.models.Sequential):
@@ -115,7 +134,7 @@ class Hdff():
         Args:
             model (tf.keras.models.Sequential): _description_
         """
-        # TODO
+        # TODO: Implementation needed
         
     def feature_bundle(self, debug : bool):
         # Theory:
@@ -139,13 +158,13 @@ class Hdff():
         # - Decide whether bundling should be a simple sum or a VSA method (depends on
         #   your VSA helper class). If summing, you may normalize afterward.
         #
-                """ Project output feature vector onto projection matrix, into high dimensional space.
+        """ Project output feature vector onto projection matrix, into high dimensional space.
             Creating feature bundle for each layer.
 
         Returns:
             tensor: _description_
         """
-        # TODO
+        # TODO: Implementation needed
         
     def projection_matrices(self):
         # Theory:
@@ -168,7 +187,7 @@ class Hdff():
         #
         """ Create projection matrix.
         """ 
-        # TODO
+        # TODO: Implementation needed
 
     def similarity(self, bundle1, bundle2):
         # Theory:
@@ -195,7 +214,7 @@ class Hdff():
         Returns:
             tensor: Vector with cosine similarities.
         """
-        # TODO
+        # TODO: Implementation needed
 
     def set_projection_matrices(self, proj):
         # Theory:
@@ -212,7 +231,7 @@ class Hdff():
         Args:
             proj (tensor): Projection matrix to update.
         """
-        #TODO
+        # TODO: Implementation needed
 
     def set_dummy_input(self, dummy_input):
         # Theory:
@@ -227,4 +246,4 @@ class Hdff():
         Args:
             dummy_input (tensor): Dummy input to update.
         """
-        # TODO
+        # TODO: Implementation needed
