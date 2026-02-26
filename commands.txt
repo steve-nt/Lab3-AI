@@ -10,6 +10,6 @@ Then upload the lab3.zip
 !mkdir -p ./.env/.saved/ 
 !mkdir -p ./.env/plot/
 
-
-
 !python main.py
+
+!zip -r saved_results.zip ./.env/.saved/ ./.env/plot/
