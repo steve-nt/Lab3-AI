@@ -1,3 +1,7 @@
+In Google Colab upper left go to:
+Runtime  -> Change runtime type -> T4 GPU -> Save
+
+Then upload the lab3.zip
 
 !unzip lab3.zip
 
