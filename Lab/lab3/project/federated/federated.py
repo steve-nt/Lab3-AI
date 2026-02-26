@@ -1,5 +1,5 @@
-import os   # Imported from Stefanos Remove it if not needed
-import copy # Imported from Stefanos Remove it if not needed
+import os   # From Stefanos Remove it if not needed
+import copy # From Stefanos Remove it if not needed
 import random
 import tensorflow as tf
 
@@ -29,7 +29,24 @@ class Federated():
         self.federated_config = federated_config
         self.ood_config = ood_config
         self.plot_config = plot_config
-        self.dataset_config = dataset_config # Imported from Stefanos Remove it if not needed
+# From Stefanos Remove it if not needed       
+        self.dataset_config = dataset_config 
+
+         # 3.2.1 Initialize: Create distinct copies for the Global Model and Local Models
+        self.global_model = copy.deepcopy(model)
+        self.local_models = {}
+        
+        for client_id in range(1, self.federated_config.clients):
+            self.local_models[client_id] = copy.deepcopy(model)
+
+        # Initialize HDFF if OOD is enabled
+        self.hdff = Hdff(self.ood_config, self.dataset_config)
+        self.hdff.feature_extraction(self.global_model.model)
+        
+        # Generate the shared projection matrix once from the global model
+        self.hdff.feature_update(self.global_model.model)
+        self.hdff.projection_matrices()
+        self.shared_proj_matrices = self.hdff.proj                   
     
     def run(self): 
         """
@@ -38,7 +55,7 @@ class Federated():
         round = 0
         
         # If loading pretrained models, round must be updated with the pre-trained models round. 
-# Imported from Stefanos Remove it if not needed
+# From Stefanos Remove it if not needed
         if self.federated_config.load:
             # Include global (host_id) and locals
             for client_id in range(self.federated_config.clients + 1): 
@@ -51,7 +68,7 @@ class Federated():
             # Update the round counter to the loaded round
             round = self.federated_config.load_round
             print(f"Loaded models from round {round}")        
-# Imported from Stefanos Remove it if not needed
+# From Stefanos Remove it if not needed
 
 
         if(round < int(self.federated_config.rounds)):  
@@ -66,7 +83,8 @@ class Federated():
         
         for round in range(1+start, self.federated_config.rounds+1):   
             part = max(int(self.federated_config.participants), 1)                 # Alteast one client will partcipate in round.
-            selected_clients = random.sample(list(self.local_models.keys()), part)                           # Imported from Stefanos Remove it if not needed # TODO Select random clients that will participate during training round. 
+# From Stefanos Remove it if not
+            selected_clients = random.sample(list(self.local_models.keys()), part) # TODO Select random clients that will participate during training round. 
             
             while self.federated_config.host_id in selected_clients:               # If global model gets selected as participant, select new.
                 selected_clients = random.sample(list(self.local_models.key()), part)
@@ -77,24 +95,28 @@ class Federated():
             if(self.ood_config.enabled and round < self.federated_config.ood_round):
                 for i in self.ood_config.ood_client:               
                     selected_clients.remove(i)
-            
+
+            # 3.2.2 Regression
             self.global_(self.federated_config.host_id, round)                     # Update all local models with global model.
             
+            # 3.2.3 Training
             for id in selected_clients:                                            # Train all local models. 
                 self.local_(id, round)
 
+            # 3.2.4 Aggregation
             self.update_(selected_clients, round)
 
-# Imported from Stefanos Remove it if not needed
+# From Stefanos Remove it if not needed
+            # 3.2.6 Saving Models
             if self.federated_config.save:
                 # Save global model
                 self.global_model.model.save(f"{self.federated_config.path}model{self.federated_config.host_id}_round{round}.keras")
                 # Save local models
                 for client_id, local_model in self.local_models.items():
                     local_model.model.save(f"{self.federated_config.path}model{client_id}_round{round}.keras")
-# Imported from Stefanos Remove it if not needed    
+# From Stefanos Remove it if not needed    
         return round
-# Imported from Stefanos Remove it if not needed   
+# From Stefanos Remove it if not needed   
     def test_(self):
         """ Evaluate the trained global model on test data """
         # The global model is assigned the datasets corresponding to its host_id
@@ -110,7 +132,8 @@ class Federated():
         if self.plot_config.plot:
             self.global_model.plot_all(test_data, xlabel="Global Model", title="Global Model Performance")
         return None
-# Imported from Stefanos Remove it if not needed     
+    
+# From Stefanos Remove it if not needed     
     
     def global_(self, id : int, round : int):                                            # Update all local models with global model weights. 
         """
@@ -119,15 +142,16 @@ class Federated():
             id (int): id for global model.
         """
         
-# Imported from Stefanos Remove it if not needed   
+# From Stefanos Remove it if not needed   
         # 3.2.2 Regression
-        # Get current global weights
-        global_weights = self.global_model.get_weights()
+        # Get current global weights (ADD .model HERE)
+        global_weights = self.global_model.model.get_weights()
         
         # Distribute to all local models
         for client_id in self.local_models.keys():
-            self.local_models[client_id].set_weights(global_weights)
-# Imported from Stefanos Remove it if not needed   
+            # ADD .model HERE AS WELL
+            self.local_models[client_id].model.set_weights(global_weights)
+# From Stefanos Remove it if not needed   
         return None
             
     def local_(self, id : int, round : int):                                         # Train local models
@@ -137,7 +161,7 @@ class Federated():
             id (int): id for local model. 
             round (int): current round. 
         """
-# Imported from Stefanos Remove it if not needed   
+# From Stefanos Remove it if not needed   
         # 3.2.3 Train
         local_model = self.local_models[id]
         
@@ -147,8 +171,8 @@ class Federated():
         
         print(f"--- Client {id} is training locally (Round {round}) ---")
         # Train the local model for the configured number of epochs
-        local_model.train(train_data, val_data, epochs=self.federated_config.epochs)
-# Imported from Stefanos Remove it if not needed   
+        local_model.train(train_data, val_data)
+# From Stefanos Remove it if not needed   
         return None
         
     def update_(self, selected_clients, round : int):
@@ -160,14 +184,20 @@ class Federated():
             selected_clients (list): list with id of clients (local models) that selected for training.
             round (int): current round. 
         """
-# Imported from Stefanos Remove it if not needed 
-        # TODO
+# From Stefanos Remove it if not needed 
+
+        # 3.3.4 Integration: OOD Security Protocol
+        if self.ood_config.enabled and self.ood_config.ood_protection and round >= self.federated_config.ood_round:
+            valid_clients = self.ood_detection(selected_clients)
+            print(f"Round {round}: Clients passed OOD detection: {valid_clients}")
+            selected_clients = valid_clients # Overwrite selected clients with only the safe ones
+
         # 3.2.4 Aggregation
         collected_weights = []
         
         # Collect weights from all clients that trained this round
         for client_id in selected_clients:
-            collected_weights.append(self.local_models[client_id].get_weights())
+            collected_weights.append(self.local_models[client_id].model.get_weights())
             
         # Federated Averaging (FedAvg) implementation
         if collected_weights:
@@ -182,9 +212,9 @@ class Federated():
                 new_weights.append(layer_mean)
                 
             # Update global model with the newly averaged weights
-            self.global_model.set_weights(new_weights)
+            self.global_model.model.set_weights(new_weights)
                 
-# Imported from Stefanos Remove it if not needed         
+# From Stefanos Remove it if not needed         
         return None
         
         
@@ -195,9 +225,13 @@ class Federated():
             id (int): Id of model.
             model (Model): Model (object).
         """
-        # TODO
+# From Stefanos Remove it if not needed  
+        self.hdff.set_projection_matrices(self.shared_proj_matrices)
+        self.hdff.feature_update(model.model)
+        bundle = self.hdff.feature_bundle(debug=self.ood_config.debug)
+        return bundle
         
-        return None
+ # From Stefanos Remove it if not needed         return None
         
     def ood_detection(self, selected_clients):
         """ Detecting model being ood from selected clients that trains.
@@ -205,14 +239,52 @@ class Federated():
         Args:
             selected_clients (int): clients that undergo training this round.
         """
-        # TODO
-        
-        return None
+# From Stefanos Remove it if not needed          # TODO
+        valid_clients = []
+        # Get the global model's fingerprint
+        global_bundle = self.ood_extraction(self.federated_config.host_id, self.global_model)
+
+        for client_id in selected_clients:
+            # Get the local model's fingerprint
+            client_bundle = self.ood_extraction(client_id, self.local_models[client_id])
+            
+            # Compare them
+            sim_score = self.hdff.similarity(global_bundle, client_bundle)
+            
+            # Check against the protection threshold
+            if sim_score >= self.ood_config.ood_protection_thres:
+                valid_clients.append(client_id)
+            else:
+                print(f"[SECURITY] Local Model {client_id} REJECTED. Sim score: {sim_score:.4f} < {self.ood_config.ood_protection_thres}")
+                
+        return valid_clients        
+# From Stefanos Remove it if not needed          return None
             
     def result(self):
         """
             Plot performance of each model. 
         """
-        # TODO
-        
+# From Stefanos Remove it if not needed         # TODO
+        if not self.plot_config.plot:
+            return None
+            
+        print("\n=== FINAL RESULTS: LOCAL MODELS ===")
+        # Evaluate each local model on its own test data
+        for client_id, local_model in self.local_models.items():
+            print(f"\n--- Testing Local Model {client_id} ---")
+            
+            # Fetch the test data for this specific client
+            dataset_idx = self.federated_config.client_to_dataset[client_id]
+            _, _, test_data = self.dataset.get(dataset_idx)
+            
+            # Print the text metrics
+            local_model.test(test_data)
+            
+            # Generate the plots for this local model
+            local_model.plot_all(
+                test_data, 
+                xlabel=f"Local Model {client_id}", 
+                title=f"Performance: Local Model {client_id}"
+            )
+# From Stefanos Remove it if not needed         
         return None

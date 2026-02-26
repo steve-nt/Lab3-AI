@@ -1,33 +1,27 @@
-# Import TensorFlow library for deep learning operations
 import tensorflow as tf
-# Import Keras from TensorFlow for building neural network models
 from tensorflow import keras
-# Import Keras layers module for constructing neural network layers
 from tensorflow.keras import layers
 
-# Import partial from functools for creating partial functions with preset arguments
 from functools import partial
-# Import tqdm for creating progress bars during iterations
 from tqdm import tqdm
 
-# Import partial again (duplicate import, not necessary but kept as-is)
 from functools import partial
 
-# Import the Vsa class from the ood module (Vector Symbolic Architecture for OOD detection)
 from ood.VSA import Vsa
-# Import configuration classes for dataset and OOD detection settings
 from config import ConfigDataset, ConfigOod
 
-# Section marker: Implementation checklist for HDFF (Hyperdimensional Feature Fusion)
-# These comments outline the requirements that must be satisfied during implementation
-# - [ ] Dummy input shape matches (batch_size, *input_shape) - batch + all input dimensions
-# - [ ] self.features length equals number of model layers - one feature per layer
-# - [ ] Projection matrices match each layer's channel count - correct input dimensions
-# - [ ] All projected features have shape (batch, hyper_size) - consistent output dimensions
-# - [ ] Bundled vector has shape (batch, hyper_size) - final bundled representation
-# - [ ] Similarity returns a scalar or vector consistently - predictable output format
+# ----------------------------------------------------------------------------
+# Implementation Checklist
+# ----------------------------------------------------------------------------
+# - [ ] Dummy input shape matches (batch_size, *input_shape)
+# - [ ] self.features length equals number of model layers
+# - [ ] Projection matrices match each layer's channel count
+# - [ ] All projected features have shape (batch, hyper_size)
+# - [ ] Bundled vector has shape (batch, hyper_size)
+# - [ ] Similarity returns a scalar or vector consistently
 
-class Hdff():
+
+class Hdff:
     # Conceptual role:
     # HDFF (Hyperdimensional Feature Fusion) builds a single high-dimensional
     # signature of a neural network by:
@@ -45,15 +39,14 @@ class Hdff():
     #   fuses them into a single vector that still reflects the multi-layer structure.
     # - A fixed projection per layer creates a stable mapping so different models
     #   can be compared in the same hypervector space.
-    def __init__(self, ood_config : ConfigOod, dataset_config : ConfigDataset):
-        # Theory:
+    def __init__(self, ood_config: ConfigOod, dataset_config: ConfigDataset):
         # - Store config objects for later use (e.g., hypervector size, debug flags).
         # - Initialize lists for projections, feature tensors, and results.
         # - Create a dummy input tensor with shape:
         #       (batch_size, *input_shape)
         #   Use ones or random values; only shape matters.
         # - Instantiate the VSA helper (may take a debug flag).
-        """ Hyperdimensional feature fusion. 
+        """Hyperdimensional feature fusion.
             Inspect the paper https://arxiv.org/abs/2112.05341 to understand the math behind.
             We apply the feature fusion for OOD detection between two models in federated learning.
             Its a bit different from the paper as we only compare the models output feature vectors.
@@ -64,29 +57,20 @@ class Hdff():
             ood_config (ConfigHdff): Hyperdimensional configuration.
             dataset_config (ConfigDataset): Dataset configuration.
         """
-        # Create a Vsa instance using the debug flag from ood_config for VSA operations
         self.vsa = Vsa(debug=ood_config.hdc_debug)
-        # Store the dataset configuration for accessing batch size and input shape
         self.dataset_config = dataset_config
-        # Store the OOD configuration for accessing hypervector size and other settings
         self.ood_config = ood_config
-          
-        # Initialize empty list to store projection matrices (one per layer)
+
         self.proj = []
-        # Initialize list to store feature tensors extracted from each model layer
-        # Start with a single dummy value that will be replaced with actual features
         self.features = [0]
-        # Initialize empty list to store similarity results during comparison
         self.results = []
-        
-        # Construct the shape for dummy input: (batch_size, *input_shape)
-        # For example, if input_shape is (224, 224, 3) and batch_size is 32, result is (32, 224, 224, 3)
-        input_shape = (self.dataset_config.batch_size,) + self.dataset_config.input_shape
-        # Create a dummy input tensor filled with ones; used to pass through model for shape inference
-        # This allows feature extraction without needing actual data
+
+        input_shape = (
+            self.dataset_config.batch_size,
+        ) + self.dataset_config.input_shape
         self.dummy_input = tf.ones(input_shape)
-         
-    def feature_update(self, model : tf.keras.models.Sequential):
+
+    def feature_update(self, model: tf.keras.models.Sequential):
         # Theory:
         # This step actually computes the layer outputs and stores them. It runs the
         # model on a dummy input and collects the output of every layer.
@@ -103,17 +87,27 @@ class Hdff():
         # - Store each result into self.features[i].
         # - Make sure the ordering matches the earlier layer list.
         #
-        """ Update feature vector with dummy input from dataset config with feature output vector from model. 
+        """Update feature vector with dummy input from dataset config with feature output vector from model.
             You can use a dummy input through the model to get the output feature vectors.
             Use tf.ones(input_shape).
-            
+
         Args:
             model (tf.keras.models.Sequential): Model for extracting output feature vectors.
         """
-        # TODO: Implementation needed
+        """ Runs dummy input through the model and extracts hidden layer outputs. """
+        model(self.dummy_input)
 
-            
-    def feature_extraction(self, model : tf.keras.models.Sequential):
+        # Create a feature extractor model that outputs the activations of every layer
+        outputs = [layer.output for layer in model.layers]
+        extractor = tf.keras.Model(inputs=model.input, outputs=outputs)
+
+        extracted_features = extractor(self.dummy_input)
+        if not isinstance(extracted_features, list):
+            extracted_features = [extracted_features]
+
+        self.features = extracted_features
+
+    def feature_extraction(self, model: tf.keras.models.Sequential):
         # Theory:
         # This step inspects the model structure and prepares storage for layer outputs.
         # It does NOT run data through the model. It is a preparation stage.
@@ -129,14 +123,15 @@ class Hdff():
         # - Count layers and allocate self.features as a list of that length.
         # - Optional: if debug is enabled, print layer names and indices.
         # - Avoid extracting features here; this should only configure structure.
-        """ Count layers and create feature vector based on models layers and structure. 
+        """Count layers and create feature vector based on models layers and structure.
 
         Args:
             model (tf.keras.models.Sequential): _description_
         """
-        # TODO: Implementation needed
-        
-    def feature_bundle(self, debug : bool):
+        """ Count layers and create feature vector storage. """
+        self.features = [None] * len(model.layers)
+
+    def feature_bundle(self, debug: bool):
         # Theory:
         # Bundling is the fusion stage. Each layer's feature is compressed, projected
         # into the hypervector space, and then combined into a single representation.
@@ -158,14 +153,30 @@ class Hdff():
         # - Decide whether bundling should be a simple sum or a VSA method (depends on
         #   your VSA helper class). If summing, you may normalize afterward.
         #
-        """ Project output feature vector onto projection matrix, into high dimensional space.
+        """Project output feature vector onto projection matrix, into high dimensional space.
             Creating feature bundle for each layer.
 
         Returns:
             tensor: _description_
         """
-        # TODO: Implementation needed
+
+    def feature_bundle(self, debug : bool = False):
+        """ Project output features onto projection matrices and bundle them. """
+        bundle = tf.zeros((self.dataset_config.batch_size, self.ood_config.hyper_size))
         
+        for feat, proj_matrix in zip(self.features, self.proj):
+            # Reduce spatial dimensions (Global Average Pooling) for Conv2D outputs
+            if len(feat.shape) == 4:
+                feat = tf.reduce_mean(feat, axis=[1, 2])
+                
+            # Project feature into hyperdimensional space
+            projected = tf.matmul(feat, proj_matrix)
+            
+            # Superpose (bundle) it into the main vector
+            bundle = bundle + projected
+            
+        return bundle
+
     def projection_matrices(self):
         # Theory:
         # Each layer output has its own dimensionality. To combine them, you project
@@ -185,9 +196,19 @@ class Hdff():
         # - Store the list of matrices in self.proj.
         # - These matrices should be fixed (non-trainable) for consistent similarity.
         #
-        """ Create projection matrix.
-        """ 
-        # TODO: Implementation needed
+        """Create projection matrix."""
+        """ Create orthogonal projection matrices for each layer. """ 
+        self.proj = []
+        initializer = tf.keras.initializers.Orthogonal()
+        
+        for feat in self.features:
+            channels = feat.shape[-1]
+            proj_matrix = tf.Variable(
+                initializer(shape=(channels, self.ood_config.hyper_size)), 
+                trainable=False, 
+                dtype=tf.float32
+            )
+            self.proj.append(proj_matrix)
 
     def similarity(self, bundle1, bundle2):
         # Theory:
@@ -204,17 +225,21 @@ class Hdff():
         # - Return a single scalar (e.g., tf.math.reduce_max similarity in batch) or a vector of
         #   similarity values. Document your choice clearly.
         # - Debug mode can print the input bundles and summary statistics.
-        """ Cosine similarity on two feature bundles.
+        """Cosine similarity on two feature bundles.
             Should be between global model and local model x, bundle 1 and bundle 2.
 
         Args:
-            bundle1 (tensor): Projection matrix 1 with output feature projection. 
-            bundle2 (tensor): Projection matrix 2 with output feature projection. 
+            bundle1 (tensor): Projection matrix 1 with output feature projection.
+            bundle2 (tensor): Projection matrix 2 with output feature projection.
 
         Returns:
             tensor: Vector with cosine similarities.
         """
-        # TODO: Implementation needed
+        """ Compute Cosine similarity between two feature bundles. """
+        b1_norm = tf.nn.l2_normalize(bundle1, axis=-1)
+        b2_norm = tf.nn.l2_normalize(bundle2, axis=-1)
+        sim = tf.reduce_sum(b1_norm * b2_norm, axis=-1)
+        return tf.reduce_mean(sim).numpy()
 
     def set_projection_matrices(self, proj):
         # Theory:
@@ -226,12 +251,13 @@ class Hdff():
         # - Validate the provided projection list has the same length as features.
         # - Simply assign it to self.proj.
         # - Optional: add shape checks for safety (channels x hyper_size).
-        """Set projection matrix to arg. 
+        """Set projection matrix to arg.
 
         Args:
             proj (tensor): Projection matrix to update.
         """
-        # TODO: Implementation needed
+        self.proj = proj
+
 
     def set_dummy_input(self, dummy_input):
         # Theory:
@@ -241,9 +267,9 @@ class Hdff():
         # Implementation hints:
         # - Simply assign the provided tensor to self.dummy_input.
         # - Optional: validate the shape matches expected model input.
-        """Set dummy input to arg. 
+        """Set dummy input to arg.
 
         Args:
             dummy_input (tensor): Dummy input to update.
         """
-        # TODO: Implementation needed
+        self.dummy_input = dummy_input
