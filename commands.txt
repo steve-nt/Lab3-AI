@@ -1,13 +1,19 @@
 In Google Colab upper left go to:
 Runtime  -> Change runtime type -> T4 GPU -> Save
 
-Then upload the lab3.zip
+Then upload the project.zip
+
+ls
+
+rm -fr project.zip
+
+ls
 
 !unzip project.zip
 
 %cd /content/project/
 
-!mkdir -p ./.env/.saved/ 
+!mkdir -p ./.env/.saved/
 !mkdir -p ./.env/plot/
 
 !python main.py
